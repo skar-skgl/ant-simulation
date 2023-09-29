@@ -15,10 +15,10 @@ public class Ant : MonoBehaviour
 
     void Update()
     {
-        MoveAnt();
+        AntMovement();
     }
 
-    private void MoveAnt()
+    private void AntMovement()
     {
         desiredDirection = (desiredDirection + Random.insideUnitCircle * wanderStrength).normalized;
         Vector2 desiredVelocity = desiredDirection * maxSpeed;
@@ -30,5 +30,10 @@ public class Ant : MonoBehaviour
 
         float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
         transform.SetPositionAndRotation(position, Quaternion.Euler(0, 0, angle));
+    }
+
+    private void GatherFood()
+    {
+        
     }
 }
