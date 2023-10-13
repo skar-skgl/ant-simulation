@@ -1,7 +1,10 @@
+using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Ant : MonoBehaviour
 {
+    public bool drawGizmos = true;
     [SerializeField] private Transform antHead;
     public float maxSpeed = 2f;
     public float steerStrength = 2f;
@@ -11,21 +14,38 @@ public class Ant : MonoBehaviour
     Vector2 velocity;
     Vector2 desiredDirection;
 
+    private List<Pheromone> pheromones = new List<Pheromone>();
+    public float maxPheromoneIntensity = 1f;
+    public float minPheromoneIntensity = 0.1f;
+
+    private PheromoneEmitter pheromoneParticleSystem;
+
     public float viewRadius = 1f;
     public float viewAngle = 120f;
+
+    private Transform targetFood;
 
     public LayerMask foodLayer;
     public LayerMask nestLayer;
     private bool hasFood = false;
     private bool hasFoodInSight = false;
+    private float timeSinceLastEmit = 0f;
 
+    void Start()
+    {
+        pheromoneParticleSystem = FindObjectOfType<PheromoneEmitter>();
+    }
 
     void Update()
     {
+        LeavePheromone(transform.position, maxPheromoneIntensity);
+
+        UpdatePheromones();
         if (!hasFood && !hasFoodInSight)
         {
             // If the ant has no food, it will wander around.
             Wander();
+            GatherFood();
         }
         else if (!hasFood && hasFoodInSight)
         {
@@ -40,9 +60,68 @@ public class Ant : MonoBehaviour
 
     }
 
+    private void UpdatePheromones()
+    {
+        for (int i = pheromones.Count - 1; i >= 0; i--)
+        {
+            Pheromone pheromone = pheromones[i];
+            pheromone.intensity -= pheromone.evaporationRate * Time.deltaTime;
+            
+
+            if (pheromone.intensity <= minPheromoneIntensity)
+            {
+                // Remove pheromones that have faded away
+                pheromones.RemoveAt(i);
+                pheromone.visualizer.remainingLifetime = 0f;
+            }
+            else
+            {
+                UpdatePheromoneVisualizer(pheromone);
+            }
+        }
+    }
+    private void UpdatePheromoneVisualizer(Pheromone pheromone)
+    {
+        // Update the visualizer's position to match the pheromone's position
+        //pheromone.visualizer.transform.position = new Vector3(pheromone.position.x, pheromone.position.y, 0f);
+
+        // Update the visualizer's appearance based on pheromone intensity
+        float intensityRatio = (pheromone.intensity - minPheromoneIntensity) / (maxPheromoneIntensity - minPheromoneIntensity);
+
+        // Adjust the visualizer's color, size, or other properties based on intensityRatio
+        // For example, change the color of the trail renderer or adjust the particle size
+        // pheromone.visualizer.GetComponent<TrailRenderer>().startColor = Color.Lerp(Color.Transparent, Color.Red, intensityRatio);
+        // pheromone.visualizer.GetComponent<TrailRenderer>().endColor = Color.Lerp(Color.Transparent, Color.Red, intensityRatio);
+        // pheromone.visualizer.GetComponent<TrailRenderer>().startWidth = 0.1f + 0.5f * intensityRatio;
+        // pheromone.visualizer.GetComponent<TrailRenderer>().endWidth = 0.1f + 0.5f * intensityRatio;
+    }
+
     private void ReturnToColony()
     {
+        // Implement this method
+        LeavePheromone(transform.position, maxPheromoneIntensity);
 
+    }
+
+    private void LeavePheromone(Vector3 position, float intensity)
+    {
+        timeSinceLastEmit += Time.deltaTime;
+        if (timeSinceLastEmit <= pheromoneParticleSystem.PheromoneEmittInterval)
+            return;
+            
+        timeSinceLastEmit = 0f;
+        Pheromone pheromone = new Pheromone(position, intensity, pheromoneParticleSystem.PheromoneEvaporationRate);
+
+        // Instantiate the pheromone visualizer prefab
+        ParticleSystem.EmitParams emitParams = new ParticleSystem.EmitParams
+        {
+            //particle = pheromone.visualizer,
+            position = position,
+            startColor = Color.red
+        };
+        pheromoneParticleSystem.pheromoneParticleSystem.Emit(emitParams, 1);
+
+        pheromones.Add(pheromone);
     }
 
     private void Wander()
@@ -61,41 +140,46 @@ public class Ant : MonoBehaviour
 
     private void GatherFood()
     {
-        Collider2D[] foodsInSight = Physics2D.OverlapCircleAll(antHead.position, viewRadius, foodLayer);
-
-        foreach (var foodCollider in foodsInSight)
+        if (targetFood == null)
         {
-            Vector2 foodPosition = foodCollider.transform.position;
-            Vector2 directionToFood = (foodPosition - (Vector2)antHead.position).normalized;
+            Collider2D[] foodsInSight = Physics2D.OverlapCircleAll(antHead.position, viewRadius, foodLayer);
 
-            // Calculate the angle between the ant's forward direction and the direction to the food
-            float angleToFood = Vector2.Angle(velocity.normalized, directionToFood);
-
-            // Check if food is within the ant's view angle
-            if (angleToFood < viewAngle / 2)
+            if (foodsInSight.Length > 0)
             {
-                desiredDirection = directionToFood;
+                hasFoodInSight = true;
+                // Pick a random food in sight
+                Transform food = foodsInSight[Random.Range(0, foodsInSight.Length)].transform;
+                Vector2 dirToFood = (food.position - antHead.position).normalized;
+                float angleToFood = Vector2.Angle(velocity.normalized, dirToFood);
 
-                // If the ant is very close to the food, consume or collect the food.
-                if (Vector2.Distance(antHead.position, foodPosition) < 0.1f)
+                if (angleToFood < viewAngle / 2)
                 {
-                    CollectFood(foodCollider);
+                    food.gameObject.layer = LayerMask.NameToLayer("TakenFood");
+                    targetFood = food;
                 }
-                break; // The ant will move to the first food it sees within its view angle. If you want the ant to prioritize closer food or some other logic, you'd adjust here.
             }
         }
-    }
+        else
+        {
+            hasFoodInSight = false;
+            desiredDirection = (targetFood.position - antHead.position).normalized;
 
-    private void CollectFood(Collider2D foodInSight)
-    {
-        hasFood = true;
-        foodInSight.transform.SetParent(antHead);
-        foodInSight.GetComponent<Collider2D>().enabled = false;
+            const float foodPickupRadius = 0.05f;
+            if (Vector2.Distance(targetFood.position, antHead.position) < foodPickupRadius)
+            {
+                targetFood.position = antHead.position;
+                targetFood.parent = antHead;
+                hasFood = true;
+                targetFood = null;
+            }
+        }
     }
 
     #region Visualizations
     void OnDrawGizmos()
     {
+        if (!drawGizmos)
+            return;
         // Define the color for the field of view visualization
         Gizmos.color = Color.blue;
 
@@ -121,6 +205,9 @@ public class Ant : MonoBehaviour
 
         Gizmos.DrawLine((Vector2)antHead.position, (Vector2)antHead.position + viewAngleA * viewRadius);
         Gizmos.DrawLine((Vector2)antHead.position, (Vector2)antHead.position + viewAngleB * viewRadius);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(antHead.position, viewRadius);
     }
 
     Vector2 DirFromAngle(float angleInDegrees, bool angleIsGlobal)
@@ -131,5 +218,7 @@ public class Ant : MonoBehaviour
         }
         return new Vector2(Mathf.Cos(angleInDegrees * Mathf.Deg2Rad), Mathf.Sin(angleInDegrees * Mathf.Deg2Rad));
     }
+
+
     #endregion
 }

@@ -120,10 +120,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 420f6e0a087bc474a9354388b0dfff55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  drawGizmos: 0
   antHead: {fileID: 643484898953494590}
   maxSpeed: 2
   steerStrength: 2
-  wanderStrength: 1
+  wanderStrength: 0.24
+  maxPheromoneIntensity: 1
+  minPheromoneIntensity: 0.1
   viewRadius: 2
   viewAngle: 120
   foodLayer:
@@ -132,9 +135,6 @@ MonoBehaviour:
   nestLayer:
     serializedVersion: 2
     m_Bits: 128
-  dotPrefab: {fileID: 1804820040570506220, guid: 7205195293c716f40af9e88ab7c8fb2d,
-    type: 3}
-  dotPlacementInterval: 1
 --- !u!1 &4187818690738376824
 GameObject:
   m_ObjectHideFlags: 0
@@ -162,7 +162,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4187818690738376824}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.51, y: 0, z: 0}
   m_LocalScale: {x: 0.22, y: 1.76, z: 1}
   m_ConstrainProportionsScale: 0

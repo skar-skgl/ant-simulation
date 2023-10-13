@@ -7,7 +7,7 @@ public class AntsManagaer : MonoBehaviour
 {
     [SerializeField] private GameObject antPrefab;
     private int antCount = 0;
-    private int numberOfAnts = 100;
+    [SerializeField] private int numberOfAnts = 100;
     
     void Start()
     {

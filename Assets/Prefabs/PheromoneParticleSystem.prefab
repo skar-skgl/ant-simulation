@@ -11,8 +11,9 @@ GameObject:
   - component: {fileID: 5054711891785455627}
   - component: {fileID: 3811258448716331175}
   - component: {fileID: 6318636451090895970}
+  - component: {fileID: 2616032858995626336}
   m_Layer: 0
-  m_Name: Particle System
+  m_Name: PheromoneParticleSystem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -865,7 +866,7 @@ ParticleSystem:
           m_PostInfinity: 2
           m_RotationOrder: 4
   EmissionModule:
-    enabled: 1
+    enabled: 0
     serializedVersion: 4
     rateOverTime:
       serializedVersion: 2
@@ -4828,3 +4829,15 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
+--- !u!114 &2616032858995626336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2631781427723235016}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a3aaf44d4daf2d4ea284b7d47bdcda1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
