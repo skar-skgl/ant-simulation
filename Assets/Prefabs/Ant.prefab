@@ -127,6 +127,7 @@ MonoBehaviour:
   wanderStrength: 0.24
   maxPheromoneIntensity: 1
   minPheromoneIntensity: 0.1
+  evaporationRate: 0.02
   viewRadius: 2
   viewAngle: 120
   foodLayer:
@@ -135,6 +136,9 @@ MonoBehaviour:
   nestLayer:
     serializedVersion: 2
     m_Bits: 128
+  visualizerPrefab: {fileID: 1804820040570506220, guid: 7205195293c716f40af9e88ab7c8fb2d,
+    type: 3}
+  pheromoneDensity: 0.4
 --- !u!1 &4187818690738376824
 GameObject:
   m_ObjectHideFlags: 0

@@ -8,9 +8,11 @@ public class AntsManagaer : MonoBehaviour
     [SerializeField] private GameObject antPrefab;
     private int antCount = 0;
     [SerializeField] private int numberOfAnts = 100;
+    private Transform antParent;
     
     void Start()
     {
+        antParent = GameObject.Find("Ants").transform;
         SpawnAnts();
     }
 
@@ -18,7 +20,7 @@ public class AntsManagaer : MonoBehaviour
     {
         for (int i = 0; i < numberOfAnts; i++)
         {
-            Instantiate(antPrefab, new Vector3(UnityEngine.Random.Range(-10, 10), 0, UnityEngine.Random.Range(-10, 10)), Quaternion.identity);
+            Instantiate(antPrefab, new Vector3(UnityEngine.Random.Range(-10, 10), 0, UnityEngine.Random.Range(-10, 10)), Quaternion.identity, antParent);
             antCount++;
         }
     }

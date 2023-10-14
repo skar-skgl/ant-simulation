@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Ant : MonoBehaviour
@@ -14,11 +13,12 @@ public class Ant : MonoBehaviour
     Vector2 velocity;
     Vector2 desiredDirection;
 
-    private List<Pheromone> pheromones = new List<Pheromone>();
+    private List<Pheromone> leavePheromones = new List<Pheromone>();
+    private List<Pheromone> returnPheromones = new List<Pheromone>();
     public float maxPheromoneIntensity = 1f;
     public float minPheromoneIntensity = 0.1f;
+    public float evaporationRate = 0.1f;
 
-    private PheromoneEmitter pheromoneParticleSystem;
 
     public float viewRadius = 1f;
     public float viewAngle = 120f;
@@ -27,29 +27,35 @@ public class Ant : MonoBehaviour
 
     public LayerMask foodLayer;
     public LayerMask nestLayer;
+    [SerializeField] private GameObject visualizerPrefab;
     private bool hasFood = false;
     private bool hasFoodInSight = false;
     private float timeSinceLastEmit = 0f;
+    [SerializeField] private float pheromoneDensity;
+    private Transform pheromoneParent;
 
-    void Start()
+    private void Start()
     {
-        pheromoneParticleSystem = FindObjectOfType<PheromoneEmitter>();
+        position = transform.position;
+        pheromoneParent = GameObject.Find("Pheromones").transform;
     }
 
     void Update()
     {
-        LeavePheromone(transform.position, maxPheromoneIntensity);
-
         UpdatePheromones();
+        DropPheromone(transform.position, maxPheromoneIntensity, hasFood);
         if (!hasFood && !hasFoodInSight)
         {
             // If the ant has no food, it will wander around.
             Wander();
+
             GatherFood();
         }
         else if (!hasFood && hasFoodInSight)
         {
             // If the ant has no food, but food in sight, it will gather food.
+            Wander();
+
             GatherFood();
         }
         else if (hasFood)
@@ -62,17 +68,34 @@ public class Ant : MonoBehaviour
 
     private void UpdatePheromones()
     {
-        for (int i = pheromones.Count - 1; i >= 0; i--)
+        for (int i = leavePheromones.Count - 1; i >= 0; i--)
         {
-            Pheromone pheromone = pheromones[i];
+            Pheromone pheromone = leavePheromones[i];
             pheromone.intensity -= pheromone.evaporationRate * Time.deltaTime;
-            
+
 
             if (pheromone.intensity <= minPheromoneIntensity)
             {
                 // Remove pheromones that have faded away
-                pheromones.RemoveAt(i);
-                pheromone.visualizer.remainingLifetime = 0f;
+                leavePheromones.RemoveAt(i);
+                Destroy(pheromone.visualizer);
+            }
+            else
+            {
+                UpdatePheromoneVisualizer(pheromone);
+            }
+        }
+        for (int i = returnPheromones.Count - 1; i >= 0; i--)
+        {
+            Pheromone pheromone = returnPheromones[i];
+            pheromone.intensity -= pheromone.evaporationRate * Time.deltaTime;
+
+
+            if (pheromone.intensity <= minPheromoneIntensity)
+            {
+                // Remove pheromones that have faded away
+                returnPheromones.RemoveAt(i);
+                Destroy(pheromone.visualizer);
             }
             else
             {
@@ -90,7 +113,7 @@ public class Ant : MonoBehaviour
 
         // Adjust the visualizer's color, size, or other properties based on intensityRatio
         // For example, change the color of the trail renderer or adjust the particle size
-        // pheromone.visualizer.GetComponent<TrailRenderer>().startColor = Color.Lerp(Color.Transparent, Color.Red, intensityRatio);
+        pheromone.visualizer.GetComponent<Renderer>().material.SetFloat("_intensity", intensityRatio);
         // pheromone.visualizer.GetComponent<TrailRenderer>().endColor = Color.Lerp(Color.Transparent, Color.Red, intensityRatio);
         // pheromone.visualizer.GetComponent<TrailRenderer>().startWidth = 0.1f + 0.5f * intensityRatio;
         // pheromone.visualizer.GetComponent<TrailRenderer>().endWidth = 0.1f + 0.5f * intensityRatio;
@@ -98,35 +121,78 @@ public class Ant : MonoBehaviour
 
     private void ReturnToColony()
     {
-        // Implement this method
-        LeavePheromone(transform.position, maxPheromoneIntensity);
+        // Calculate the direction to the nest (you need to specify how to find the nest)
+        Vector2 directionToNest = CalculateDirectionToNest();
+
+        // Set the desired direction to the direction to the nest
+        desiredDirection = directionToNest.normalized;
+
+        // Calculate desired velocity and steering force
+        Vector2 desiredVelocity = desiredDirection * maxSpeed;
+        Vector2 desiredSteeringForce = (desiredVelocity - velocity) * steerStrength;
+        Vector2 acceleration = Vector2.ClampMagnitude(desiredSteeringForce, steerStrength) / 1f;
+
+        // Update velocity and position
+        velocity = Vector2.ClampMagnitude(velocity + acceleration * Time.deltaTime, maxSpeed);
+        position += velocity * Time.deltaTime;
+
+        // Rotate the ant to face its movement direction
+        float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+        transform.SetPositionAndRotation(position, Quaternion.Euler(0, 0, angle));
+
 
     }
 
-    private void LeavePheromone(Vector3 position, float intensity)
+    private Vector2 CalculateDirectionToNest()
+    {
+        // Check if there are any return pheromones within the ant's view radius
+        foreach (Pheromone pheromone in leavePheromones)
+        {
+            float distanceToPheromone = Vector2.Distance(transform.position, pheromone.position);
+
+            // Check if the pheromone is within the ant's view radius
+            if (distanceToPheromone <= viewRadius)
+            {
+                // Calculate the direction to the pheromone
+                Vector2 directionToPheromone = (pheromone.position - (Vector2)transform.position).normalized;
+
+                // Return the direction to the pheromone
+                return directionToPheromone;
+            }
+        }
+
+        // If no pheromones are within view radius, return a default direction (e.g., wander)
+        return desiredDirection;
+    }
+
+    private void DropPheromone(Vector3 position, float intensity, bool hasFood)
     {
         timeSinceLastEmit += Time.deltaTime;
-        if (timeSinceLastEmit <= pheromoneParticleSystem.PheromoneEmittInterval)
+        if (timeSinceLastEmit <= pheromoneDensity)
             return;
-            
+
         timeSinceLastEmit = 0f;
-        Pheromone pheromone = new Pheromone(position, intensity, pheromoneParticleSystem.PheromoneEvaporationRate);
-
-        // Instantiate the pheromone visualizer prefab
-        ParticleSystem.EmitParams emitParams = new ParticleSystem.EmitParams
+        Pheromone pheromone = new Pheromone(position, intensity, evaporationRate)
         {
-            //particle = pheromone.visualizer,
-            position = position,
-            startColor = Color.red
+            visualizer = Instantiate(visualizerPrefab, position, Quaternion.identity, pheromoneParent)
         };
-        pheromoneParticleSystem.pheromoneParticleSystem.Emit(emitParams, 1);
 
-        pheromones.Add(pheromone);
+
+        if (hasFood)
+        {
+            returnPheromones.Add(pheromone);
+            pheromone.visualizer.GetComponent<Renderer>().material.SetInt("_hasFood", 1);
+        }
+        else
+        {
+            leavePheromones.Add(pheromone);
+            pheromone.visualizer.GetComponent<Renderer>().material.SetInt("_hasFood", 0);
+        }
     }
 
     private void Wander()
     {
-        desiredDirection = (desiredDirection + Random.insideUnitCircle * wanderStrength).normalized;
+        desiredDirection = (desiredDirection + Random.insideUnitCircle * wanderStrength).normalized + PheromoneBias();
         Vector2 desiredVelocity = desiredDirection * maxSpeed;
         Vector2 desiredSteeringForce = (desiredVelocity - velocity) * steerStrength;
         Vector2 acceleration = Vector2.ClampMagnitude(desiredSteeringForce, steerStrength) / 1f;
@@ -136,6 +202,38 @@ public class Ant : MonoBehaviour
 
         float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
         transform.SetPositionAndRotation(position, Quaternion.Euler(0, 0, angle));
+    }
+    private Vector2 PheromoneBias()
+    {
+        Vector2 bias = Vector2.zero;
+        if (hasFood)
+        {
+            foreach (Pheromone pheromone in leavePheromones)
+            {
+                Vector2 dirToPheromone = (pheromone.position - (Vector2)transform.position).normalized;
+                float angleToPheromone = Vector2.Angle(velocity.normalized, dirToPheromone);
+
+                if (angleToPheromone < viewAngle / 2)
+                {
+                    bias += dirToPheromone * pheromone.intensity;
+                }
+            }
+            return bias;
+        }
+        else
+        {
+            foreach (Pheromone pheromone in returnPheromones)
+            {
+                Vector2 dirToPheromone = (pheromone.position - (Vector2)transform.position).normalized;
+                float angleToPheromone = Vector2.Angle(velocity.normalized, dirToPheromone);
+
+                if (angleToPheromone < viewAngle / 2)
+                {
+                    bias += dirToPheromone * pheromone.intensity;
+                }
+            }
+            return bias;
+        }
     }
 
     private void GatherFood()
@@ -161,7 +259,6 @@ public class Ant : MonoBehaviour
         }
         else
         {
-            hasFoodInSight = false;
             desiredDirection = (targetFood.position - antHead.position).normalized;
 
             const float foodPickupRadius = 0.05f;
@@ -171,8 +268,15 @@ public class Ant : MonoBehaviour
                 targetFood.parent = antHead;
                 hasFood = true;
                 targetFood = null;
+                hasFoodInSight = false;
             }
         }
+    }
+    private void DropFood()
+    {
+        hasFood = false;
+        targetFood.parent = null;
+        Destroy(targetFood.gameObject);
     }
 
     #region Visualizations
