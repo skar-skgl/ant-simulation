@@ -125,9 +125,7 @@ MonoBehaviour:
   maxSpeed: 2
   steerStrength: 2
   wanderStrength: 0.24
-  maxPheromoneIntensity: 1
-  minPheromoneIntensity: 0.1
-  evaporationRate: 0.02
+  evaporationRate: 0.03
   viewRadius: 2
   viewAngle: 120
   foodLayer:

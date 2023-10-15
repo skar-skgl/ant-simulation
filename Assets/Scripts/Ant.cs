@@ -9,14 +9,13 @@ public class Ant : MonoBehaviour
     public float steerStrength = 2f;
     public float wanderStrength = 1f;
 
+    private Transform antColony;
+
     Vector2 position;
     Vector2 velocity;
     Vector2 desiredDirection;
 
-    private List<Pheromone> leavePheromones = new List<Pheromone>();
-    private List<Pheromone> returnPheromones = new List<Pheromone>();
-    public float maxPheromoneIntensity = 1f;
-    public float minPheromoneIntensity = 0.1f;
+
     public float evaporationRate = 0.1f;
 
 
@@ -33,17 +32,18 @@ public class Ant : MonoBehaviour
     private float timeSinceLastEmit = 0f;
     [SerializeField] private float pheromoneDensity;
     private Transform pheromoneParent;
+    private bool nestInSight = false;
 
     private void Start()
     {
+        antColony = GameObject.Find("AntColony").transform;
         position = transform.position;
         pheromoneParent = GameObject.Find("Pheromones").transform;
     }
 
     void Update()
     {
-        UpdatePheromones();
-        DropPheromone(transform.position, maxPheromoneIntensity, hasFood);
+        DropPheromone(transform.position, PheromoneManager.instance.maxPheromoneIntensity, hasFood);
         if (!hasFood && !hasFoodInSight)
         {
             // If the ant has no food, it will wander around.
@@ -62,70 +62,18 @@ public class Ant : MonoBehaviour
         {
             // If the ant has food, but no food in sight, it will return to the nest.
             ReturnToColony();
-        }
-
-    }
-
-    private void UpdatePheromones()
-    {
-        for (int i = leavePheromones.Count - 1; i >= 0; i--)
-        {
-            Pheromone pheromone = leavePheromones[i];
-            pheromone.intensity -= pheromone.evaporationRate * Time.deltaTime;
-
-
-            if (pheromone.intensity <= minPheromoneIntensity)
-            {
-                // Remove pheromones that have faded away
-                leavePheromones.RemoveAt(i);
-                Destroy(pheromone.visualizer);
-            }
-            else
-            {
-                UpdatePheromoneVisualizer(pheromone);
-            }
-        }
-        for (int i = returnPheromones.Count - 1; i >= 0; i--)
-        {
-            Pheromone pheromone = returnPheromones[i];
-            pheromone.intensity -= pheromone.evaporationRate * Time.deltaTime;
-
-
-            if (pheromone.intensity <= minPheromoneIntensity)
-            {
-                // Remove pheromones that have faded away
-                returnPheromones.RemoveAt(i);
-                Destroy(pheromone.visualizer);
-            }
-            else
-            {
-                UpdatePheromoneVisualizer(pheromone);
-            }
+            LeaveFood();
         }
     }
-    private void UpdatePheromoneVisualizer(Pheromone pheromone)
-    {
-        // Update the visualizer's position to match the pheromone's position
-        //pheromone.visualizer.transform.position = new Vector3(pheromone.position.x, pheromone.position.y, 0f);
 
-        // Update the visualizer's appearance based on pheromone intensity
-        float intensityRatio = (pheromone.intensity - minPheromoneIntensity) / (maxPheromoneIntensity - minPheromoneIntensity);
-
-        // Adjust the visualizer's color, size, or other properties based on intensityRatio
-        // For example, change the color of the trail renderer or adjust the particle size
-        pheromone.visualizer.GetComponent<Renderer>().material.SetFloat("_intensity", intensityRatio);
-        // pheromone.visualizer.GetComponent<TrailRenderer>().endColor = Color.Lerp(Color.Transparent, Color.Red, intensityRatio);
-        // pheromone.visualizer.GetComponent<TrailRenderer>().startWidth = 0.1f + 0.5f * intensityRatio;
-        // pheromone.visualizer.GetComponent<TrailRenderer>().endWidth = 0.1f + 0.5f * intensityRatio;
-    }
-
+    
     private void ReturnToColony()
     {
         // Calculate the direction to the nest (you need to specify how to find the nest)
-        Vector2 directionToNest = CalculateDirectionToNest();
+        //Vector2 directionToNest = CalculateDirectionToNest();
 
         // Set the desired direction to the direction to the nest
-        desiredDirection = directionToNest.normalized;
+        desiredDirection = (CalculateDirectionToNest() + Random.insideUnitCircle * wanderStrength).normalized;
 
         // Calculate desired velocity and steering force
         Vector2 desiredVelocity = desiredDirection * maxSpeed;
@@ -139,14 +87,36 @@ public class Ant : MonoBehaviour
         // Rotate the ant to face its movement direction
         float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
         transform.SetPositionAndRotation(position, Quaternion.Euler(0, 0, angle));
+    }
 
+    private void LeaveFood()
+    {
+        if (!nestInSight)
+        {
+            Collider2D nest = Physics2D.OverlapCircle(antHead.position, viewRadius, nestLayer);
 
+            if (nest != null)
+            {
+                nestInSight = true;
+            }
+        }
+        else
+        {
+            desiredDirection = (antColony.position - antHead.position).normalized;
+
+            const float foodPickupRadius = 0.05f;
+            if (Vector2.Distance(antColony.position, antHead.position) < foodPickupRadius)
+            {
+                DropFood();
+                nestInSight = false;
+            }
+        }
     }
 
     private Vector2 CalculateDirectionToNest()
     {
         // Check if there are any return pheromones within the ant's view radius
-        foreach (Pheromone pheromone in leavePheromones)
+        foreach (Pheromone pheromone in PheromoneManager.instance.leavePheromones)
         {
             float distanceToPheromone = Vector2.Distance(transform.position, pheromone.position);
 
@@ -177,16 +147,13 @@ public class Ant : MonoBehaviour
             visualizer = Instantiate(visualizerPrefab, position, Quaternion.identity, pheromoneParent)
         };
 
-
         if (hasFood)
         {
-            returnPheromones.Add(pheromone);
-            pheromone.visualizer.GetComponent<Renderer>().material.SetInt("_hasFood", 1);
+            PheromoneManager.instance.AddReturnPheromone(pheromone);
         }
         else
         {
-            leavePheromones.Add(pheromone);
-            pheromone.visualizer.GetComponent<Renderer>().material.SetInt("_hasFood", 0);
+            PheromoneManager.instance.AddLeavePheromone(pheromone);
         }
     }
 
@@ -208,7 +175,7 @@ public class Ant : MonoBehaviour
         Vector2 bias = Vector2.zero;
         if (hasFood)
         {
-            foreach (Pheromone pheromone in leavePheromones)
+            foreach (Pheromone pheromone in PheromoneManager.instance.leavePheromones)
             {
                 Vector2 dirToPheromone = (pheromone.position - (Vector2)transform.position).normalized;
                 float angleToPheromone = Vector2.Angle(velocity.normalized, dirToPheromone);
@@ -222,7 +189,7 @@ public class Ant : MonoBehaviour
         }
         else
         {
-            foreach (Pheromone pheromone in returnPheromones)
+            foreach (Pheromone pheromone in PheromoneManager.instance.returnPheromones)
             {
                 Vector2 dirToPheromone = (pheromone.position - (Vector2)transform.position).normalized;
                 float angleToPheromone = Vector2.Angle(velocity.normalized, dirToPheromone);
@@ -274,9 +241,10 @@ public class Ant : MonoBehaviour
     }
     private void DropFood()
     {
+        Transform food = antHead.GetChild(0);
         hasFood = false;
-        targetFood.parent = null;
-        Destroy(targetFood.gameObject);
+        food.parent = null;
+        Destroy(food.gameObject);
     }
 
     #region Visualizations

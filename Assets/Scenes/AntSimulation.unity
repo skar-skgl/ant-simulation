@@ -809,6 +809,53 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1150181993}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &77826426
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 77826428}
+  - component: {fileID: 77826427}
+  m_Layer: 0
+  m_Name: PheromoneManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &77826427
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 77826426}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fbf5b24978528844a728a2ad3c4abce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pheromoneParent: {fileID: 261251135}
+  minPheromoneIntensity: 0
+  maxPheromoneIntensity: 1
+--- !u!4 &77826428
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 77826426}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &84421767
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7769,7 +7816,7 @@ GameObject:
   - component: {fileID: 1106249100}
   - component: {fileID: 1106249099}
   - component: {fileID: 1106249103}
-  m_Layer: 7
+  m_Layer: 8
   m_Name: AntColony
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -14158,6 +14205,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5719657370621386390, guid: 68ed0062eabc38d4cb036abd3e8a33ff,
         type: 3}
+      propertyPath: antColony
+      value: 
+      objectReference: {fileID: 1106249099}
+    - target: {fileID: 5719657370621386390, guid: 68ed0062eabc38d4cb036abd3e8a33ff,
+        type: 3}
       propertyPath: pheromoneParent
       value: 
       objectReference: {fileID: 0}
@@ -14301,3 +14353,4 @@ SceneRoots:
   - {fileID: 265348385}
   - {fileID: 1076075314}
   - {fileID: 261251135}
+  - {fileID: 77826428}
